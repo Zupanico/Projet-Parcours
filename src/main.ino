@@ -40,8 +40,8 @@ double valPID = 0;
 float PID()
 {
 
-    valEncodeurL = ENCODER_Read(LEFT);
-    valEncodeurR = ENCODER_Read(RIGHT);
+    valEncodeurL = abs(ENCODER_Read(LEFT));
+    valEncodeurR = abs(ENCODER_Read(RIGHT));
 
     erreur =((valEncodeurR - valEncodeurL) * kp);
     erreurKI += erreur;
