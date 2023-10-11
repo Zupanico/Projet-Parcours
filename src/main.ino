@@ -20,7 +20,8 @@ int parcours;
 int mur;
 int compteurDroite = 0;
 int compteurGauche = 0;
-long distance = 6700; // correspond a 50 cm
+long double_distance = 6700; // correspond a 50 cm
+long double_double_distance = double_distance * 2;
 long tour = 1970;     // correspond a 90 degres
 int32_t valEncodeurL;
 int32_t valEncodeurR;
@@ -47,14 +48,14 @@ float PID()
 
 void avancer()
 {
-    while ((ENCODER_Read(LEFT) < distance) && (ENCODER_Read(RIGHT) < distance))
+    while ((ENCODER_Read(LEFT) < double_distance) && (ENCODER_Read(RIGHT) < double_distance))
     {
-        if ((ENCODER_Read(LEFT) < (distance * 0.10)) && (ENCODER_Read(RIGHT) < (distance * 0.10)))
+        if ((ENCODER_Read(LEFT) < (double_distance * 0.10)) && (ENCODER_Read(RIGHT) < (double_distance * 0.10)))
         {
             MOTOR_SetSpeed(RIGHT, 0.15);
             MOTOR_SetSpeed(LEFT, 0.15 + PID());
         }
-        else if ((ENCODER_Read(LEFT) > (distance * 0.10)) && (ENCODER_Read(RIGHT) > (distance * 0.10))&&(ENCODER_Read(LEFT) < (distance * 0.90)) && (ENCODER_Read(RIGHT) < (distance * 0.90)))
+        else if ((ENCODER_Read(LEFT) > (double_distance * 0.10)) && (ENCODER_Read(RIGHT) > (double_distance * 0.10))&&(ENCODER_Read(LEFT) < (double_distance * 0.90)) && (ENCODER_Read(RIGHT) < (double_distance * 0.90)))
         {
             MOTOR_SetSpeed(RIGHT, 0.25);
             MOTOR_SetSpeed(LEFT, 0.25 + PID());
@@ -69,6 +70,31 @@ void avancer()
     arreter();
 
 }
+
+void avancer_double()
+{
+    while ((ENCODER_Read(LEFT) < (double_distance)) && (ENCODER_Read(RIGHT) < double_distance))
+    {
+        if ((ENCODER_Read(LEFT) < (double_distance * 0.10)) && (ENCODER_Read(RIGHT) < (double_distance * 0.10)))
+        {
+            MOTOR_SetSpeed(RIGHT, 0.15);
+            MOTOR_SetSpeed(LEFT, 0.15 + PID());
+        }
+        else if ((ENCODER_Read(LEFT) > (double_distance * 0.10)) && (ENCODER_Read(RIGHT) > (double_distance * 0.10))&&(ENCODER_Read(LEFT) < (double_distance * 0.90)) && (ENCODER_Read(RIGHT) < (double_distance * 0.90)))
+        {
+            MOTOR_SetSpeed(RIGHT, 0.25);
+            MOTOR_SetSpeed(LEFT, 0.25 + PID());
+        }
+        else
+        {
+            MOTOR_SetSpeed(RIGHT, 0.15);
+            MOTOR_SetSpeed(LEFT, 0.15 + PID());
+        }
+        delay(50);
+    }
+    arreter();
+}
+
 void arreter()
 {
     MOTOR_SetSpeed(RIGHT, 0);
@@ -300,8 +326,16 @@ void loop()
         }
         else
         {
-            avancer();
-            parcours++;
+            if (parcours %2 == 0)
+            {
+                avancer_double();
+                parcours += 2;
+            }
+            else
+            {
+                avancer();
+                parcours++;
+            }
         }
     }
     arreter();
