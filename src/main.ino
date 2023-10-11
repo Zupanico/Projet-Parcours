@@ -10,6 +10,8 @@ Date: 09/10/2023
 
 // Variables globales et defines
 
+int ambiant = 5;
+int signal = 4;
 int rouge = 49;
 int vert = 48;
 int position;
@@ -22,42 +24,50 @@ long distance = 6700; // correspond a 50 cm
 long tour = 1970;     // correspond a 90 degres
 int32_t valEncodeurL;
 int32_t valEncodeurR;
-float kp = 0.0001;
-float ki = 0.0000001;
+float kp = 0.00004;
+float ki = 0.00000001;
 float erreur = 0;
-float compteur = 1;
+float erreurKI = 0;
+float compteur = 0.05;
 
 // Fonctions
-float PID(float vitesse)
+float PID()
 {
 
     valEncodeurL = ENCODER_Read(LEFT);
     valEncodeurR = ENCODER_Read(RIGHT);
 
-    erreur = vitesse + ((valEncodeurR - valEncodeurL) * kp);
-    erreur += (compteur * (valEncodeurR - valEncodeurL) * ki);
-    compteur++;
-    return erreur;
+    erreur =((valEncodeurR - valEncodeurL) * kp);
+    erreurKI += erreur;
+
+
+    
+    return 1/compteur *(kp*erreur+ki*erreurKI);
 }
 
 void avancer()
 {
-    while ((ENCODER_Read(LEFT) < distance) || (ENCODER_Read(RIGHT) < distance))
+    while ((ENCODER_Read(LEFT) < distance) && (ENCODER_Read(RIGHT) < distance))
     {
-        float vitesse1 = PID(0.25);
-        float vitesse2 = PID(0.15);
-        if ((ENCODER_Read(LEFT) < (distance * 0.85)) || (ENCODER_Read(RIGHT) < (distance * 0.85)))
+        if ((ENCODER_Read(LEFT) < (distance * 0.10)) && (ENCODER_Read(RIGHT) < (distance * 0.10)))
+        {
+            MOTOR_SetSpeed(RIGHT, 0.15);
+            MOTOR_SetSpeed(LEFT, 0.15 + PID());
+        }
+        else if ((ENCODER_Read(LEFT) > (distance * 0.10)) && (ENCODER_Read(RIGHT) > (distance * 0.10))&&(ENCODER_Read(LEFT) < (distance * 0.90)) && (ENCODER_Read(RIGHT) < (distance * 0.90)))
         {
             MOTOR_SetSpeed(RIGHT, 0.25);
-            MOTOR_SetSpeed(LEFT, vitesse1);
+            MOTOR_SetSpeed(LEFT, 0.25 + PID());
         }
         else
         {
             MOTOR_SetSpeed(RIGHT, 0.15);
-            MOTOR_SetSpeed(LEFT, vitesse2);
+            MOTOR_SetSpeed(LEFT, 0.15 + PID());
         }
+        delay(50);
     }
     arreter();
+
 }
 void arreter()
 {
@@ -85,7 +95,7 @@ void tourner_gauche()
     MOTOR_SetSpeed(RIGHT, 0.2);
     MOTOR_SetSpeed(LEFT, -0.2);
 
-    while (ENCODER_Read(RIGHT) < (tour))
+    while (ENCODER_Read(RIGHT) < (tour-10))
     {
         true;
     }
@@ -137,20 +147,44 @@ void reculer_gauche()
         tourner_droite();
     }
 }
+
+void detectionDesifflet()
+{
+  
+  double bruitAmbiant = analogRead(ambiant);
+  double signal_5Khz = analogRead(signal);
+  
+  for (int i = 0; i < 500; i++)
+  {
+    while ((signal_5Khz - bruitAmbiant) > -200)
+    {
+       bruitAmbiant = analogRead(ambiant);
+        signal_5Khz = analogRead(signal);
+       Serial.println(signal_5Khz-bruitAmbiant);
+       delay(1);
+    }
+  }
+  delay(1500);
+}
+
 // Fonctions d'initialisation (setup)
 
 void setup()
 {
+  Serial.begin(9600);
+  BoardInit();
+  pinMode(signal,  INPUT);
+  pinMode(ambiant,  INPUT);
+  pinMode(vert, INPUT);
+  pinMode(rouge, INPUT);
 
-    BoardInit();
+  position = 2;    // le robot commence dans la colonne du milieu
+  orientation = 0; // le robot commence en faisant face vers l'avant
+  parcours = 1;    // le robot commence sur la premiere ligne
+  mur = 0;
 
-    pinMode(vert, INPUT);
-    pinMode(rouge, INPUT);
+  detectionDesifflet();
 
-    position = 2;    // le robot commence dans la colonne du milieu
-    orientation = 0; // le robot commence en faisant face vers l'avant
-    parcours = 1;    // le robot commence sur la premiere ligne
-    mur = 0;
 }
 
 // Fonctions de boucle infini (loop())
@@ -158,7 +192,7 @@ void setup()
 void loop()
 {
     // SOFT_TIMER_Update(); // A decommenter pour utiliser des compteurs logiciels
-    delay(100); // Delais pour décharger le CPU
+    delay(100); // Delais pour dÃ©charger le CPU
 
     while (parcours < 10)
     {
