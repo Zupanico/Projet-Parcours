@@ -1,7 +1,7 @@
 /*
 Projet: Defi du parcours
-Equipe: P6
-Auteurs: Evan Frappier
+Equipe: P6-B
+Auteurs: Evan Frappier, Nicolas Garant, Félix Bordeleau, Kanvali Bakayoko
 Description: Permet de guider le robot dans le labyrinthe
 Date: 09/10/2023
 */
@@ -9,7 +9,7 @@ Date: 09/10/2023
 #include <LibRobus.h> // Essentielle pour utiliser RobUS
 
 // Variables globales et defines
-
+// ============================
 int ambiant = 5;
 int signal = 4;
 int rouge = 49;
@@ -20,8 +20,8 @@ int parcours;
 int mur;
 int compteurDroite = 0;
 int compteurGauche = 0;
-long double_distance = 6700; // correspond a 50 cm
-long double_double_distance = double_distance * 2;
+long distance = 6700;    // correspond a 50 cm
+long double_distance = distance * 2;
 long tour = 1970;     // correspond a 90 degres
 int32_t valEncodeurL;
 int32_t valEncodeurR;
@@ -30,8 +30,13 @@ float ki = 0.00000001;
 float erreur = 0;
 float erreurKI = 0;
 float compteur = 0.05;
+double valPID = 0;
+// ============================
 
 // Fonctions
+// ============================
+
+// Corriger les valeurs des encodeurs pour que le robot avance droit
 float PID()
 {
 
@@ -41,21 +46,22 @@ float PID()
     erreur =((valEncodeurR - valEncodeurL) * kp);
     erreurKI += erreur;
 
-
+    valPID = (1 / compteur) * (kp * erreur + ki * erreurKI);
     
-    return 1/compteur *(kp*erreur+ki*erreurKI);
+    return valPID;
 }
 
+// Avancer le robot d'une distance de 50 cm
 void avancer()
 {
-    while ((ENCODER_Read(LEFT) < double_distance) && (ENCODER_Read(RIGHT) < double_distance))
+    while ((ENCODER_Read(LEFT) < distance) && (ENCODER_Read(RIGHT) < distance))
     {
-        if ((ENCODER_Read(LEFT) < (double_distance * 0.10)) && (ENCODER_Read(RIGHT) < (double_distance * 0.10)))
+        if ((ENCODER_Read(LEFT) < (distance * 0.10)) && (ENCODER_Read(RIGHT) < (distance * 0.10)))
         {
             MOTOR_SetSpeed(RIGHT, 0.15);
             MOTOR_SetSpeed(LEFT, 0.15 + PID());
         }
-        else if ((ENCODER_Read(LEFT) > (double_distance * 0.10)) && (ENCODER_Read(RIGHT) > (double_distance * 0.10))&&(ENCODER_Read(LEFT) < (double_distance * 0.90)) && (ENCODER_Read(RIGHT) < (double_distance * 0.90)))
+        else if ((ENCODER_Read(LEFT) > (distance * 0.10)) && (ENCODER_Read(RIGHT) > (distance * 0.10)) && (ENCODER_Read(LEFT) < (distance * 0.90)) && (ENCODER_Read(RIGHT) < (distance * 0.90)))
         {
             MOTOR_SetSpeed(RIGHT, 0.25);
             MOTOR_SetSpeed(LEFT, 0.25 + PID());
@@ -209,7 +215,7 @@ void setup()
   parcours = 1;    // le robot commence sur la premiere ligne
   mur = 0;
 
-  detectionDesifflet();
+//   detectionDesifflet();
 
 }
 
@@ -326,7 +332,7 @@ void loop()
         }
         else
         {
-            if (parcours %2 == 0)
+            if (parcours %2 == 1)
             {
                 avancer_double();
                 parcours += 2;
