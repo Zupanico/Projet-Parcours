@@ -268,22 +268,25 @@ void loop()
                     // verifie s'il y a un mur en avant et s'il y a un mur dans la colonne 1
                     if (digitalRead(rouge) == 0 || digitalRead(vert) == 0)
                     {
-                        tourner_droite();
-                        reculer_droite();
-                        avancer();
-                        position++;
-                        tourner_gauche();
-                        if (mur == 1){
+                        
+                        if (mur == 1)
+                        {
                             // verifie s'il y a un mur en avant et s'il y a un mur dans les autres colonnes
-                            if (digitalRead(rouge) == 0 || digitalRead(vert) == 0 && mur != 1)
-                            {
-                                // Fait demi tour et se redresse
-                                demi_tour();
-                                avancer();
-                                position--;
-                                tourner_droite();
-                            }
+                            tourner_droite();
+                            reculer_droite();
+                            avancer();
+                            position++;
+                            tourner_gauche();
                         }
+                        else
+                        {
+                            // Fait demi tour et se redresse
+                            demi_tour();
+                            avancer();
+                            position--;
+                            tourner_droite();
+                        }
+                        
                     }
 
                     else
@@ -332,7 +335,7 @@ void loop()
         }
         else
         {
-            if (parcours %2 == 1)
+            if ((parcours %2 == 1) && (parcours!=9))
             {
                 avancer_double();
                 parcours += 2;
