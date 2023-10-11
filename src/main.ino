@@ -1,313 +1,274 @@
+/*
+Projet: Defi du parcours
+Equipe: P6
+Auteurs: Evan Frappier
+Description: Permet de guider le robot dans le labyrinthe
+Date: 09/10/2023
+*/
 
 #include <LibRobus.h> // Essentielle pour utiliser RobUS
 
-int portBruitAmbiant = 4;
-int portBruitEntendue = 5;
+// Variables globales et defines
 
-int portDetecteurProximVert = 48;
-int portDetecteurProximRouge = 49;
-
+int rouge = 49;
+int vert = 48;
+int position;
+int orientation;
+int parcours;
+int mur;
 int compteurDroite = 0;
 int compteurGauche = 0;
-double derniereErreur = 0;
+long distance = 6700; // correspond a 50 cm
+long tour = 1970;     // correspond a 90 degres
+int32_t valEncodeurL;
+int32_t valEncodeurR;
+float kp = 0.0001;
+float ki = 0.0000001;
+float erreur = 0;
+float compteur = 1;
 
-int positionX = 2;   // 1 = Gauche, 2 = Millieu, 3 = Droite
-int positionY = 1;   // Début = 1, Fin = 10
-int orientation = 0; // Initialise l'orientation de départ, -1 = vers la gauche, 0 = tout droit, 1 = vers la droite, 2 vers le bas
-                     // Le but d'utiliser un int est de faire en sorte que quand il avance la postition en x change selon l'orientation
-double erreurKP = 0;
-double erreurKI = 0;
-
-long millisDebut = 0;
-long millisFin = 0;
-
-double KP = 0.00007; // 0.0006
-double KI = 0.0000015;
-
-int valeurAvancer = 6740; // Robot A : 6682 Robot B : 6740
-int valeurTourner = 2013; // Robot A : 1985 Robot B : 2015
-float distanceRestante = 0;
-float MOTORSPEED = 0;
-
-double ValPID = 0;
-
-double PID()
+// Fonctions
+float PID(float vitesse)
 {
 
-  millisFin = millis();
+    valEncodeurL = ENCODER_Read(LEFT);
+    valEncodeurR = ENCODER_Read(RIGHT);
 
-  if ((millisFin - millisDebut) >= 50.0)
-  {
-    int valeurEncodeurDroit = abs(ENCODER_Read(RIGHT));
-    int valeurEncodeurGauche = abs(ENCODER_Read(LEFT));
-
-    erreurKP = valeurEncodeurDroit - valeurEncodeurGauche;
-    erreurKI += erreurKP;
-
-    ValPID = (1 / 0.05) * (erreurKP * KP + erreurKI * KI);
-/*
-    Serial.println(erreurKP);
-    Serial.println(ValPID, 10);
-    Serial.println("");
-    Serial.println(abs(ENCODER_Read(RIGHT)));
-    Serial.println(abs(ENCODER_Read(LEFT)));
-    Serial.println("");
-*/
-    millisDebut = millis();
-  }
-
-  // Serial.println(ValPID);
-  return ValPID;
+    erreur = vitesse + ((valEncodeurR - valEncodeurL) * kp);
+    erreur += (compteur * (valEncodeurR - valEncodeurL) * ki);
+    compteur++;
+    return erreur;
 }
 
-void AVANCER()
+void avancer()
 {
-
-  if (orientation != 2)
-  {
-    positionX += orientation;
-  }
-
-  if (orientation == 0)
-  {
-    positionY++;
-  }
-  else if (orientation == 2)
-  {
-
-    positionY--;
-  }
-
-  while ((abs(ENCODER_Read(RIGHT))) <= valeurAvancer) // Boucle qui s'arrête selon la valeur du compteur car les encodeur sont reset à chaque utiliation du pid
-  { 
-    if ((abs(ENCODER_Read(RIGHT))) <= valeurAvancer * 0.40)
+    while ((ENCODER_Read(LEFT) < distance) || (ENCODER_Read(RIGHT) < distance))
     {
-      MOTOR_SetSpeed(RIGHT, 0.30);          // Maitre
-      MOTOR_SetSpeed(LEFT, (0.30+0.01 + PID())); // Esclave
-    }
-    else if ((abs(ENCODER_Read(RIGHT))) <= valeurAvancer * 0.70)
-    {
-      MOTOR_SetSpeed(RIGHT, 0.40);          // Maitre
-      MOTOR_SetSpeed(LEFT, (0.40+0.01 + PID())); // Esclave
-    }
-    else if ((abs(ENCODER_Read(RIGHT))) <= valeurAvancer * 0.90)
-    {
-      MOTOR_SetSpeed(RIGHT, 0.20); // Maitre
-      MOTOR_SetSpeed(LEFT, (0.20+0.01 + PID()));
-    }
-    else
-    {
-      MOTOR_SetSpeed(RIGHT, 0.1); // Maitre
-      MOTOR_SetSpeed(LEFT, (0.1+0.01 + PID()));
-    }
-  }
-  reset();
-}
-void TOURNERDROITE()
-{
-
-  if (orientation == 0) // Si le robot est orienté vers le nord il aura une orientation vers la droite
-  {
-    orientation = 1;
-  }
-  else if (orientation == -1) // Sinon il est orienté vers la gauche et reviens avec un orientation vers le nord
-  {
-    orientation = 0;
-  }
-  else if (orientation == 2)
-  {
-    orientation = -1;
-  }
-  else
-  {
-
-    orientation = 2;
-  }
-
-  while (abs(ENCODER_Read(RIGHT)) <= valeurTourner) // Boucle qui s'arrête selon la valeur du compteur car les encodeur sont reset à chaque utiliation du pid
-  {
-    if ((abs(ENCODER_Read(RIGHT))) <= valeurTourner * 0.60)
-    {
-      MOTOR_SetSpeed(RIGHT, -0.35);         // Maitre
-      MOTOR_SetSpeed(LEFT, (0.35 + PID())); // Esclave
-    }
-    else
-    {
-      distanceRestante = 1 - (abs(ENCODER_Read(RIGHT)) / valeurTourner);
-      MOTORSPEED = (-0.625 * distanceRestante) + 0.725;
-      MOTOR_SetSpeed(RIGHT, -(MOTORSPEED)); // Maitre
-      MOTOR_SetSpeed(LEFT, MOTORSPEED + PID());
-    }
-  }
-  reset();
-}
-
-void TOURNERGAUCHE()
-{
-
-  if (orientation == 0) // Si le robot est orienté vers le nord il aura une orientation vers la droite
-  {
-    orientation = -1;
-  }
-  else if (orientation == -1) // Sinon il est orienté vers la gauche et reviens avec un orientation vers le nord
-  {
-    orientation = 2;
-  }
-  else if (orientation == 2)
-  {
-    orientation = 1;
-  }
-  else
-  {
-
-    orientation = 0;
-  }
-
-  while (abs(ENCODER_Read(RIGHT)) <= valeurTourner) // Boucle qui s'arrête selon la valeur du compteur car les encodeur sont reset à chaque utiliation du pid
-  {
-    if ((abs(ENCODER_Read(RIGHT))) <= valeurTourner * 0.60)
-    {
-      MOTOR_SetSpeed(RIGHT, 0.35);             // Maitre
-      MOTOR_SetSpeed(LEFT, (-(0.35 + PID()))); // Esclave
-    }
-    else
-    {
-      distanceRestante = 1 - (abs(ENCODER_Read(RIGHT)) / valeurTourner);
-      MOTORSPEED = (-0.625 * distanceRestante) + 0.725;
-      MOTOR_SetSpeed(RIGHT, MOTORSPEED); // Maitre
-      MOTOR_SetSpeed(LEFT, -(MOTORSPEED + PID()));
-    }
-  }
-  reset();
-}
-
-void detectionSifflet()
-{
-
-  double A4 = 0;
-  double A5 = 0;
-  for (int i = 0; i < 500; i++)
-  {
-    while ((A5 - A4) < 220) // Robot A 220 Robot 110
-    {
-      Serial.println(A5 - A4);
-      A4 = analogRead(portBruitAmbiant);
-      A5 = analogRead(portBruitEntendue);
-      delay(1);
-      // if(A5 - A4)
-    }
-  }
-
-  delay(1500);
-}
-
-bool Detection()
-{
-
-  return (digitalRead(portDetecteurProximVert) == 0 && digitalRead(portDetecteurProximRouge) == 0); // Renvoie vrai si il détecte quelque chose
-}
-
-void algorithme()
-{
-
-  if (positionY != 10)
-  { // Condition finale du robot, c'est à dire la postion 10 est la fin du labyrinthe
-
-    switch (positionX)
-    {
-    case 1: // À gauche dans le labyrinthe
-
-      if (orientation == -1 || (Detection() && (orientation == 0))) // Si il regarde à gauche et il y a rien ou si il reguarde tout droit et voit quelque chose
-      {
-        TOURNERDROITE();
-      }
-      else // Si il regarde vers l'avant et pas de mur, ou il regarde à droite
-      {
-        AVANCER();
-      }
-
-      break;
-
-    case 2: // Au milieu dans le labyrinthe
-
-      if (!Detection())
-      {
-        AVANCER();
-      }
-      else
-      {
-
-        TOURNERDROITE();
-
-        if (!Detection())
+        float vitesse1 = PID(0.25);
+        float vitesse2 = PID(0.15);
+        if ((ENCODER_Read(LEFT) < (distance * 0.85)) || (ENCODER_Read(RIGHT) < (distance * 0.85)))
         {
-
-          AVANCER();
+            MOTOR_SetSpeed(RIGHT, 0.25);
+            MOTOR_SetSpeed(LEFT, vitesse1);
         }
         else
         {
-          TOURNERGAUCHE();
-
-          TOURNERGAUCHE();
-
-          AVANCER();
+            MOTOR_SetSpeed(RIGHT, 0.15);
+            MOTOR_SetSpeed(LEFT, vitesse2);
         }
-      }
-
-      break;
-
-    case 3: // À droite dans le labyrinthe
-
-      if (orientation == 1 || (Detection() && (orientation == 0))) // Si il regarde à gauche et il y a rien ou si il regarde tout droit et voit quelque chose
-      {
-        TOURNERGAUCHE();
-      }
-      else
-      {
-        AVANCER(); // Si il regarde vers l'avant et pas de mur, ou il regarde à gauche
-      }
-
-      break;
     }
-  }
+    arreter();
 }
-
-void reset()
+void arreter()
+{
+    MOTOR_SetSpeed(RIGHT, 0);
+    MOTOR_SetSpeed(LEFT, 0);
+    ENCODER_Reset(LEFT);
+    ENCODER_Reset(RIGHT);
+    delay(100);
+}
+void tourner_droite()
 {
 
-  MOTOR_SetSpeed(RIGHT, 0.0);
-  MOTOR_SetSpeed(LEFT, 0.0);
-  // Delais pour décharger le CPU
-  delay(250);
-  ENCODER_Reset(RIGHT);
-  ENCODER_Reset(LEFT);
+    MOTOR_SetSpeed(RIGHT, -0.2);
+    MOTOR_SetSpeed(LEFT, 0.2);
+
+    while (ENCODER_Read(LEFT) < (tour))
+    {
+        true;
+    }
+    arreter();
 }
+void tourner_gauche()
+{
+
+    MOTOR_SetSpeed(RIGHT, 0.2);
+    MOTOR_SetSpeed(LEFT, -0.2);
+
+    while (ENCODER_Read(RIGHT) < (tour))
+    {
+        true;
+    }
+    arreter();
+}
+void demi_tour()
+{
+
+    MOTOR_SetSpeed(RIGHT, 0.2);
+    MOTOR_SetSpeed(LEFT, -0.2);
+
+    while (ENCODER_Read(RIGHT) < (2 * tour + 20))
+    {
+        true;
+    }
+    arreter();
+}
+void reculer_droite()
+{
+    avancer();
+    parcours--;
+    avancer();
+    parcours--;
+    tourner_gauche();
+    if (digitalRead(rouge) == 0 || digitalRead(vert) == 0)
+    {
+        tourner_droite();
+        avancer();
+        parcours--;
+        avancer();
+        parcours--;
+        tourner_gauche();
+    }
+}
+void reculer_gauche()
+{
+    avancer();
+    parcours--;
+    avancer();
+    parcours--;
+    tourner_droite();
+    if (digitalRead(rouge) == 0 || digitalRead(vert) == 0)
+    {
+        tourner_gauche();
+        avancer();
+        parcours--;
+        avancer();
+        parcours--;
+        tourner_droite();
+    }
+}
+// Fonctions d'initialisation (setup)
 
 void setup()
 {
-  BoardInit();
 
-  pinMode(portBruitAmbiant, INPUT);
-  pinMode(portBruitEntendue, INPUT);
+    BoardInit();
 
-  pinMode(portDetecteurProximVert, INPUT);
-  pinMode(portDetecteurProximRouge, INPUT);
+    pinMode(vert, INPUT);
+    pinMode(rouge, INPUT);
 
-  Serial.begin(115200);
-
-  delay(100);
-  // detectionSifflet(); // Attend le son du siflet
-  while (!ROBUS_IsBumper(REAR))
-  {
-  }
-  ENCODER_Reset(RIGHT);
-  ENCODER_Reset(LEFT);
+    position = 2;    // le robot commence dans la colonne du milieu
+    orientation = 0; // le robot commence en faisant face vers l'avant
+    parcours = 1;    // le robot commence sur la premiere ligne
+    mur = 0;
 }
+
+// Fonctions de boucle infini (loop())
 
 void loop()
 {
+    // SOFT_TIMER_Update(); // A decommenter pour utiliser des compteurs logiciels
+    delay(100); // Delais pour décharger le CPU
 
-  
-  algorithme();
-  
+    while (parcours < 10)
+    {
+        if (digitalRead(rouge) == 0 || digitalRead(vert) == 0)
+        {
+            switch (position)
+            {
+            case 1: // le robot voit un mur et il est dans la colonne de gauche
+                // va dans la colonne du milieu
+                tourner_droite();
+                avancer();
+                position++;
+                tourner_gauche();
+                mur = 1;
+                break;
+
+            case 2:
+                //il est dans la colonne du milieu et il voit un mur
+                if(mur == 3)
+                {
+                    tourner_gauche();
+                    if (digitalRead(rouge) == 0 || digitalRead(vert) == 0)
+                    {
+                        tourner_gauche();
+                        reculer_gauche();
+                        avancer();
+                        position--;
+                        tourner_droite();
+                    }
+                    else
+                    {
+                        avancer();
+                        position--;
+                        tourner_droite();
+                    }   
+                }
+                else
+                {                  
+                    tourner_droite();
+
+                    // verifie s'il y a un mur en avant et s'il y a un mur dans la colonne 1
+                    if (digitalRead(rouge) == 0 || digitalRead(vert) == 0)
+                    {
+                        tourner_droite();
+                        reculer_droite();
+                        avancer();
+                        position++;
+                        tourner_gauche();
+                        if (mur == 1){
+                            // verifie s'il y a un mur en avant et s'il y a un mur dans les autres colonnes
+                            if (digitalRead(rouge) == 0 || digitalRead(vert) == 0 && mur != 1)
+                            {
+                                // Fait demi tour et se redresse
+                                demi_tour();
+                                avancer();
+                                position--;
+                                tourner_droite();
+                            }
+                        }
+                    }
+
+                    else
+                    {
+                        avancer();
+                        position++;
+                        tourner_gauche();
+
+                        if (digitalRead(rouge) == 0 || digitalRead(vert) == 0)
+                        {
+                            tourner_gauche();
+                            avancer();
+                            position--;
+
+                            if (digitalRead(rouge) == 0 || digitalRead(vert) == 0){
+                                tourner_gauche();
+                                reculer_gauche();
+                                avancer();
+                                position--;
+                                tourner_droite();
+                            }
+                            else{
+                                avancer();
+                                position--;
+                                tourner_droite();
+                            }
+                        }
+                    }
+                }
+                // reset le mur
+                mur = 0;
+                break;
+
+            case 3: // le robot voit un mur et il est dans la colonne de droite
+                // va dans la colonne du milieu
+                tourner_gauche();
+                avancer();
+                position--;
+                tourner_droite();
+                mur = 3;
+                break;
+
+            default:
+                break;
+            }
+        }
+        else
+        {
+            avancer();
+            parcours++;
+        }
+    }
+    arreter();
 }
