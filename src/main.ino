@@ -1,7 +1,7 @@
 /*
 Projet: Defi du parcours
 Equipe: P6-B
-Auteurs: Evan Frappier, Nicolas Garant, Félix Bordeleau, Kanvali Bakayoko
+Auteurs: Evan Frappier, Nicolas Garant, Félix Bordeleau et Kanvali Bakayoko
 Description: Permet de guider le robot dans le labyrinthe
 Date: 09/10/2023
 */
@@ -22,15 +22,16 @@ int compteurDroite = 0;
 int compteurGauche = 0;
 long distance = 6700;    // correspond a 50 cm
 long double_distance = distance * 2;
-long tour = 1970;     // correspond a 90 degres
+long tour = 1960;     // correspond a 90 degres
 int32_t valEncodeurL;
 int32_t valEncodeurR;
-float kp = 0.00004;
-float ki = 0.00000001;
+float kp = 0.00005;
+float ki = 0.000003;
 float erreur = 0;
 float erreurKI = 0;
 float compteur = 0.05;
 double valPID = 0;
+float millisDebut = 0;
 // ============================
 
 // Fonctions
@@ -39,21 +40,28 @@ double valPID = 0;
 // Corriger les valeurs des encodeurs pour que le robot avance droit
 float PID()
 {
+float millisFin = millis();
 
+if(millisFin-millisDebut >= 50.0 ){}
     valEncodeurL = abs(ENCODER_Read(LEFT));
     valEncodeurR = abs(ENCODER_Read(RIGHT));
 
-    erreur =((valEncodeurR - valEncodeurL) * kp);
+    erreur =((valEncodeurR - valEncodeurL));
     erreurKI += erreur;
 
     valPID = (1 / compteur) * (kp * erreur + ki * erreurKI);
-    
+    Serial.println(valPID, 10);
     return valPID;
+    millisDebut = millis();
 }
 
 // Avancer le robot d'une distance de 50 cm
 void avancer()
 {
+    MOTOR_SetSpeed(RIGHT, 0.15);
+    MOTOR_SetSpeed(LEFT,0.15);
+    delay(100);
+
     while ((ENCODER_Read(LEFT) < distance) && (ENCODER_Read(RIGHT) < distance))
     {
         if ((ENCODER_Read(LEFT) < (distance * 0.10)) && (ENCODER_Read(RIGHT) < (distance * 0.10)))
@@ -61,24 +69,28 @@ void avancer()
             MOTOR_SetSpeed(RIGHT, 0.15);
             MOTOR_SetSpeed(LEFT, 0.15 + PID());
         }
-        else if ((ENCODER_Read(LEFT) > (distance * 0.10)) && (ENCODER_Read(RIGHT) > (distance * 0.10)) && (ENCODER_Read(LEFT) < (distance * 0.90)) && (ENCODER_Read(RIGHT) < (distance * 0.90)))
+        else if ((ENCODER_Read(LEFT) > (distance * 0.10)) && (ENCODER_Read(RIGHT) > (distance * 0.10)) && (ENCODER_Read(LEFT) < (distance * 0.80)) && (ENCODER_Read(RIGHT) < (distance * 0.80)))
         {
-            MOTOR_SetSpeed(RIGHT, 0.25);
-            MOTOR_SetSpeed(LEFT, 0.25 + PID());
+            MOTOR_SetSpeed(RIGHT, 0.30);
+            MOTOR_SetSpeed(LEFT, 0.30 + PID());
         }
         else
         {
             MOTOR_SetSpeed(RIGHT, 0.15);
             MOTOR_SetSpeed(LEFT, 0.15 + PID());
         }
-        delay(50);
     }
     arreter();
 
 }
 
 void avancer_double()
-{
+{   
+
+    MOTOR_SetSpeed(RIGHT, 0.15);
+    MOTOR_SetSpeed(LEFT,0.15);
+    delay(100);
+
     while ((ENCODER_Read(LEFT) < (double_distance)) && (ENCODER_Read(RIGHT) < double_distance))
     {
         if ((ENCODER_Read(LEFT) < (double_distance * 0.10)) && (ENCODER_Read(RIGHT) < (double_distance * 0.10)))
@@ -86,17 +98,16 @@ void avancer_double()
             MOTOR_SetSpeed(RIGHT, 0.15);
             MOTOR_SetSpeed(LEFT, 0.15 + PID());
         }
-        else if ((ENCODER_Read(LEFT) > (double_distance * 0.10)) && (ENCODER_Read(RIGHT) > (double_distance * 0.10))&&(ENCODER_Read(LEFT) < (double_distance * 0.90)) && (ENCODER_Read(RIGHT) < (double_distance * 0.90)))
+        else if ((ENCODER_Read(LEFT) > (double_distance * 0.10)) && (ENCODER_Read(RIGHT) > (double_distance * 0.10))&&(ENCODER_Read(LEFT) < (double_distance * 0.80)) && (ENCODER_Read(RIGHT) < (double_distance * 0.80)))
         {
-            MOTOR_SetSpeed(RIGHT, 0.25);
-            MOTOR_SetSpeed(LEFT, 0.25 + PID());
+            MOTOR_SetSpeed(RIGHT, 0.30);
+            MOTOR_SetSpeed(LEFT, 0.30 + PID());
         }
         else
         {
             MOTOR_SetSpeed(RIGHT, 0.15);
             MOTOR_SetSpeed(LEFT, 0.15 + PID());
         }
-        delay(50);
     }
     arreter();
 }
@@ -105,44 +116,50 @@ void arreter()
 {
     MOTOR_SetSpeed(RIGHT, 0);
     MOTOR_SetSpeed(LEFT, 0);
+    delay(100);
     ENCODER_Reset(LEFT);
     ENCODER_Reset(RIGHT);
-    delay(100);
 }
 void tourner_droite()
 {
 
-    MOTOR_SetSpeed(RIGHT, -0.2);
-    MOTOR_SetSpeed(LEFT, 0.2);
+    MOTOR_SetSpeed(RIGHT, -0.22);
+    MOTOR_SetSpeed(LEFT, 0.22 + PID());
 
-    while (ENCODER_Read(LEFT) < (tour))
+    while (ENCODER_Read(LEFT) < (tour - 50))
     {
         true;
     }
+
+
     arreter();
 }
 void tourner_gauche()
 {
 
-    MOTOR_SetSpeed(RIGHT, 0.2);
-    MOTOR_SetSpeed(LEFT, -0.2);
+    MOTOR_SetSpeed(RIGHT, 0.22);
+    MOTOR_SetSpeed(LEFT, -(0.22 + PID()));
 
-    while (ENCODER_Read(RIGHT) < (tour-10))
+    while (ENCODER_Read(RIGHT) < (tour - 25))
     {
         true;
     }
+
+
     arreter();
 }
 void demi_tour()
 {
 
-    MOTOR_SetSpeed(RIGHT, 0.2);
-    MOTOR_SetSpeed(LEFT, -0.2);
+    MOTOR_SetSpeed(RIGHT, 0.22);
+    MOTOR_SetSpeed(LEFT, -(0.22 + PID()));
 
-    while (ENCODER_Read(RIGHT) < (2 * tour + 20))
+    while (ENCODER_Read(RIGHT) < (2 * tour + 5))
     {
         true;
     }
+
+
     arreter();
 }
 void reculer_droite()
@@ -228,7 +245,7 @@ void loop()
 
     while (parcours < 10)
     {
-        if (digitalRead(rouge) == 0 || digitalRead(vert) == 0)
+        if (((digitalRead(rouge) == 0 || digitalRead(vert) == 0)) || ((position == 2 && (parcours == 1 || parcours == 3 || parcours == 7 || parcours == 9))))
         {
             switch (position)
             {
@@ -301,14 +318,16 @@ void loop()
                             avancer();
                             position--;
 
-                            if (digitalRead(rouge) == 0 || digitalRead(vert) == 0){
+                            if (digitalRead(rouge) == 0 || digitalRead(vert) == 0)
+                            {
                                 tourner_gauche();
                                 reculer_gauche();
                                 avancer();
                                 position--;
                                 tourner_droite();
                             }
-                            else{
+                            else
+                            {
                                 avancer();
                                 position--;
                                 tourner_droite();
@@ -333,8 +352,11 @@ void loop()
                 break;
             }
         }
+    
+        
         else
         {
+         
             if ((parcours %2 == 1) && (parcours!=9))
             {
                 avancer_double();
@@ -344,8 +366,37 @@ void loop()
             {
                 avancer();
                 parcours++;
+                mur = 0;
             }
+        
         }
     }
+       
+    if (position==3)
+    {
+        avancer();
+        tourner_gauche();
+        avancer();
+        tourner_gauche();
+
+        for (int i = 0; i < 10; i++)
+        {
+            avancer();
+        }
+    }
+    else if (position == 1)
+    {
+        avancer();
+        tourner_droite();
+        avancer();
+        tourner_droite();
+
+        for (int i = 0; i < 10; i++)
+        {
+            avancer();
+        }
+    }
+
+    
     arreter();
 }
