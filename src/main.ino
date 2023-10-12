@@ -351,9 +351,7 @@ void loop()
             default:
                 break;
             }
-        }
-    
-        
+        }  
         else
         {
          
@@ -372,7 +370,8 @@ void loop()
         }
     }
        
-    if (position==3)
+    // le robot est rendu a la derniere ligne, il doit se rendre a la ligne d'arrivee et la depasser
+    if (position==3) // s'il est dans la 3e colonne
     {
         avancer();
         tourner_gauche();
@@ -384,7 +383,7 @@ void loop()
             avancer();
         }
     }
-    else if (position == 1)
+    else if (position == 1) // s'il est dans la 1ere colonne
     {
         avancer();
         tourner_droite();
@@ -397,6 +396,8 @@ void loop()
         }
     }
 
-    
+    // arrete le robot
     arreter();
 }
+// Fin du programme
+// ============================
