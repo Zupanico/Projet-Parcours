@@ -20,7 +20,7 @@ int parcours;
 int mur;
 int compteurDroite = 0;
 int compteurGauche = 0;
-long distance = 6700;    // correspond a 50 cm
+long distance = 6650;    // correspond a 50 cm
 long double_distance = distance * 2;
 long tour = 1960;     // correspond a 90 degres
 int32_t valEncodeurL;
@@ -126,7 +126,7 @@ void tourner_droite()
     MOTOR_SetSpeed(RIGHT, -0.22);
     MOTOR_SetSpeed(LEFT, 0.22 + PID());
 
-    while (ENCODER_Read(LEFT) < (tour - 50))
+    while (ENCODER_Read(LEFT) < (tour - 53))
     {
         true;
     }
@@ -232,7 +232,7 @@ void setup()
   parcours = 1;    // le robot commence sur la premiere ligne
   mur = 0;
 
-//   detectionDesifflet();
+detectionDesifflet();
 
 }
 
